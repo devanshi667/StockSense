@@ -1,0 +1,99 @@
+@model PurchaseCreateViewModel
+@{
+    ViewData["Title"] = "Record purchase";
+    var canRecord = Model.Suppliers.Any() && Model.Products.Any();
+    var lineConfig = new
+    {
+        mode = "purchase",
+        products = Model.Products.Select(p => new { id = p.Id, name = p.Name, sku = p.Sku, unit = p.Unit, price = p.Price, cost = p.Cost, stock = p.Stock }).ToList(),
+        lines = Model.Lines.Select(l => new { productId = l.ProductId, quantity = l.Quantity, unitCost = l.UnitCost, expiryDate = l.ExpiryDate.HasValue ? l.ExpiryDate.Value.ToString("yyyy-MM-dd") : "" }).ToList()
+    };
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Record purchase</h1>
+        <p class="page-sub">Stock is added to inventory only when you save this form</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Index" class="btn btn-outline-secondary">Purchase history</a>
+    </div>
+</div>
+
+@if (!Model.Suppliers.Any())
+{
+    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Add a supplier first. <a asp-controller="Suppliers" asp-action="Create" class="alert-link">Add supplier</a></div>
+}
+@if (!Model.Products.Any())
+{
+    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Add a product first. <a asp-controller="Products" asp-action="Create" class="alert-link">Add product</a></div>
+}
+
+@if (canRecord)
+{
+    <form asp-action="Create" method="post" id="lineForm" data-once novalidate>
+        <input type="hidden" asp-for="ClientToken" />
+        <div asp-validation-summary="All" class="alert alert-danger"></div>
+        <div id="clientErrors" class="alert alert-danger d-none" role="alert"></div>
+
+        <div class="card-soft mb-3">
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label asp-for="SupplierId" class="form-label"></label>
+                    <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select">
+                        <option value="">Select a supplier</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label asp-for="PurchaseDate" class="form-label"></label>
+                    <input asp-for="PurchaseDate" type="date" class="form-control" max="@Ui.IsoDate(DateTime.Today)" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card-soft mb-3" id="lineApp" data-mode="purchase">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Items bought</h2>
+                    <p class="card-sub">Cost is per unit. The product's purchase cost is updated to the latest cost you enter.</p>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addLine"><i class="bi bi-plus-lg me-1"></i>Add item</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-modern line-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="min-width:230px">Product</th>
+                            <th style="min-width:110px">Quantity</th>
+                            <th style="min-width:130px">Unit cost (&#8377;)</th>
+                            <th style="min-width:150px">Batch expiry (optional)</th>
+                            <th class="text-end" style="min-width:110px">Line total</th>
+                            <th style="width:48px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lineBody"></tbody>
+                </table>
+            </div>
+            <div class="line-total-bar">
+                <span>Purchase total</span>
+                <strong id="grandTotal">&#8377;0.00</strong>
+            </div>
+        </div>
+
+        <div class="card-soft mb-3">
+            <label asp-for="Notes" class="form-label">Notes (optional)</label>
+            <textarea asp-for="Notes" class="form-control" rows="2" maxlength="300" placeholder="Bill number, remarks..."></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save purchase &amp; add stock</button>
+            <a asp-action="Index" class="btn btn-light">Cancel</a>
+        </div>
+    </form>
+
+    <script type="application/json" id="lineConfig">@Json.Serialize(lineConfig)</script>
+}
+
+@section Scripts {
+    <script src="~/js/line-items.js" asp-append-version="true"></script>
+}

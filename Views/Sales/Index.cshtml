@@ -1,0 +1,110 @@
+@model SaleListViewModel
+@{
+    ViewData["Title"] = "Sales history";
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.Search) || Model.From.HasValue || Model.To.HasValue || Model.Status != "all";
+    var statusOptions = new (string Value, string Label)[] { ("all", "All sales"), ("paid", "Fully paid"), ("credit", "On credit (udhaar)") };
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Sales history</h1>
+        <p class="page-sub">Every completed bill, searchable by invoice, customer or product</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
+    </div>
+</div>
+
+<div class="card-soft">
+    <form method="get" asp-action="Index" class="filter-bar">
+        <div class="filter-search">
+            <i class="bi bi-search"></i>
+            <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Invoice, customer, mobile or product" aria-label="Search sales" />
+        </div>
+        <input type="date" name="from" value="@Ui.IsoDate(Model.From)" class="form-control" aria-label="From date" title="From date" />
+        <input type="date" name="to" value="@Ui.IsoDate(Model.To)" class="form-control" aria-label="To date" title="To date" />
+        <select name="status" class="form-select" data-autosubmit aria-label="Payment status">
+            @foreach (var option in statusOptions)
+            {
+                <option value="@option.Value" selected="@(Model.Status == option.Value)">@option.Label</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-outline-primary">Apply</button>
+        @if (hasFilters)
+        {
+            <a asp-action="Index" class="btn btn-link text-muted">Clear</a>
+        }
+    </form>
+
+    @if (Model.Sales.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon soft-info"><i class="bi bi-receipt"></i></div>
+            @if (hasFilters)
+            {
+                <h2 class="h5">No sales match your filters</h2>
+                <a asp-action="Index" class="btn btn-outline-primary">Clear filters</a>
+            }
+            else
+            {
+                <h2 class="h5">No sales yet</h2>
+                <p class="text-muted">Your bills will appear here after your first sale.</p>
+                <a asp-action="Create" class="btn btn-primary">Make a sale</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="summary-strip">
+            <span>Matching bills: <strong>@Model.Sales.TotalCount</strong></span>
+            <span>Bill value: <strong>@Fmt.Money(Model.RangeTotal)</strong></span>
+            <span>Put on credit: <strong>@Fmt.Money(Model.RangeCredit)</strong></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-modern align-middle">
+                <thead>
+                    <tr><th>Invoice</th><th>Date</th><th>Customer</th><th class="text-end">Items</th><th class="text-end">Total</th><th>Payment</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Sales.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@s.Id" class="row-title">@s.InvoiceNumber</a>
+                                @if (s.IsDemo)
+                                {
+                                    <span class="badge-soft soft-muted ms-1" title="Created by the demo data loader">Demo</span>
+                                }
+                            </td>
+                            <td class="text-nowrap">@Fmt.Stamp(s.SaleDate)</td>
+                            <td>@(string.IsNullOrWhiteSpace(s.CustomerName) ? "Walk-in" : s.CustomerName)</td>
+                            <td class="text-end">@s.ItemCount</td>
+                            <td class="text-end text-nowrap fw-semibold">@Fmt.Money(s.TotalAmount)</td>
+                            <td class="text-nowrap">
+                                @if (s.CreditAmount <= 0)
+                                {
+                                    <span class="badge-soft soft-success">Paid &middot; @Fmt.Method(s.PaymentMethod)</span>
+                                }
+                                else if (s.AmountPaid > 0)
+                                {
+                                    <span class="badge-soft soft-warning">Part paid &middot; owes @Fmt.Money(s.CreditAmount)</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft soft-danger">Credit &middot; @Fmt.Money(s.CreditAmount)</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-light" title="View"><i class="bi bi-eye"></i><span class="visually-hidden">View @s.InvoiceNumber</span></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="list-foot">
+            <span class="text-muted small">Showing @Model.Sales.FirstItemNumber&ndash;@Model.Sales.LastItemNumber of @Model.Sales.TotalCount sale(s)</span>
+            <partial name="_Pager" model="Model.Sales" />
+        </div>
+    }
+</div>

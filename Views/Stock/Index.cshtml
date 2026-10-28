@@ -1,0 +1,140 @@
+@model AlertsViewModel
+@{
+    ViewData["Title"] = "Stock alerts";
+    var counts = Model.Counts;
+    var kinds = new (string Value, string Label, int Count)[]
+    {
+        ("all", "All", counts.AttentionCount),
+        ("expired", "Expired", counts.Expired),
+        ("expiring", "Expiring soon", counts.ExpiringSoon),
+        ("low", "Low stock", counts.LowStock - counts.OutOfStock),
+        ("out", "Out of stock", counts.OutOfStock)
+    };
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Stock alerts</h1>
+        <p class="page-sub">Low stock, expiring and expired products, with what to do next</p>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-sliders me-1"></i>Warning period: @Model.ExpiryWarningDays days</a>
+        <a asp-controller="Purchases" asp-action="Create" class="btn btn-primary"><i class="bi bi-truck me-1"></i>Record purchase</a>
+    </div>
+</div>
+
+<ul class="nav nav-pills tab-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(Model.Tab == "alerts" ? "active" : "")" asp-action="Index" asp-route-tab="alerts">Alerts <span class="count-pill">@Model.Alerts.Count</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.Tab == "reorder" ? "active" : "")" asp-action="Index" asp-route-tab="reorder">Reorder suggestions <span class="count-pill">@Model.Reorder.Count</span></a>
+    </li>
+</ul>
+
+@if (Model.Tab == "alerts")
+{
+    <div class="chip-filters mb-3">
+        @foreach (var k in kinds)
+        {
+            <a class="chip-filter @(Model.Kind == k.Value ? "active" : "")" asp-action="Index" asp-route-tab="alerts" asp-route-kind="@k.Value">@k.Label</a>
+        }
+    </div>
+
+    <div class="card-soft">
+        @if (Model.Alerts.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon soft-success"><i class="bi bi-check2-circle"></i></div>
+                <h2 class="h5">Nothing needs attention</h2>
+                <p class="text-muted mb-0">No products in this view are low on stock or close to expiry.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="alert-list roomy">
+                @foreach (var alert in Model.Alerts)
+                {
+                    <li class="alert-row">
+                        <span class="alert-icon @Ui.SeverityClass(alert.Severity)"><i class="bi @Ui.KindIcon(alert.Kind)"></i></span>
+                        <div class="alert-body">
+                            <div class="d-flex flex-wrap justify-content-between gap-2">
+                                <a class="alert-name" asp-controller="Products" asp-action="Details" asp-route-id="@alert.ProductId">@alert.ProductName <span class="text-muted fw-normal">&middot; @alert.Sku</span></a>
+                                <span>
+                                    <span class="badge-soft @Ui.SeverityClass(alert.Severity)">@Ui.SeverityLabel(alert.Severity)</span>
+                                    <span class="badge-soft soft-muted">@alert.Title</span>
+                                </span>
+                            </div>
+                            <div class="alert-msg">@alert.Message</div>
+                            <div class="alert-action"><i class="bi bi-lightbulb"></i> <strong>Recommended:</strong> @alert.RecommendedAction</div>
+                            <div class="mt-2 d-flex gap-2 flex-wrap">
+                                <a asp-controller="Products" asp-action="Details" asp-route-id="@alert.ProductId" class="btn btn-sm btn-light">View product</a>
+                                @if (alert.Kind == AlertKind.LowStock || alert.Kind == AlertKind.OutOfStock)
+                                {
+                                    <a asp-controller="Purchases" asp-action="Create" asp-route-productId="@alert.ProductId" class="btn btn-sm btn-outline-primary">Restock</a>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Sales" asp-action="Create" asp-route-productId="@alert.ProductId" class="btn btn-sm btn-outline-primary">@(alert.Kind == AlertKind.Expired ? "Open sale form" : "Sell now")</a>
+                                }
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+else
+{
+    <div class="card-soft">
+        @if (Model.Reorder.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon soft-success"><i class="bi bi-check2-circle"></i></div>
+                <h2 class="h5">No reorders needed</h2>
+                <p class="text-muted mb-0">Every product is above its minimum stock level.</p>
+            </div>
+        }
+        else
+        {
+            <div class="summary-strip">
+                <span>@Model.Reorder.Count product(s) to reorder</span>
+                <span>Estimated cost: <strong>@Fmt.Money(Model.ReorderEstimate)</strong></span>
+                <span class="text-muted">Suggested quantity brings stock up to @StockRules.ReorderTargetMultiplier&times; the minimum level.</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-modern align-middle">
+                    <thead>
+                        <tr><th>Product</th><th class="text-end">In stock</th><th class="text-end">Minimum</th><th class="text-end">Suggested order</th><th>Last supplier</th><th class="text-end">Est. cost</th><th class="text-end">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Reorder)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-controller="Products" asp-action="Details" asp-route-id="@r.ProductId" class="row-title">@r.ProductName</a>
+                                    <div class="row-sub">@r.Sku &middot; @r.CategoryName</div>
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    @Fmt.Qty(r.CurrentStock) @r.Unit
+                                    @if (r.CurrentStock <= 0)
+                                    {
+                                        <div><span class="badge-soft soft-danger">Out of stock</span></div>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">@Fmt.Qty(r.MinStock) @r.Unit</td>
+                                <td class="text-end text-nowrap fw-semibold">@Fmt.Qty(r.SuggestedQuantity) @r.Unit</td>
+                                <td>@(string.IsNullOrWhiteSpace(r.LastSupplierName) ? "—" : r.LastSupplierName)</td>
+                                <td class="text-end text-nowrap">@Fmt.Money(r.EstimatedCost)</td>
+                                <td class="text-end">
+                                    <a asp-controller="Purchases" asp-action="Create" asp-route-productId="@r.ProductId" class="btn btn-sm btn-outline-primary">Restock</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}

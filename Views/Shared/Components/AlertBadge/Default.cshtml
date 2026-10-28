@@ -1,0 +1,5 @@
+@model int
+@if (Model > 0)
+{
+    <span class="side-badge" title="@Model product(s) need attention">@(Model > 99 ? "99+" : Model.ToString())</span>
+}

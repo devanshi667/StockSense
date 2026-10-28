@@ -1,0 +1,76 @@
+@model SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+    var demo = Model.DemoCounts;
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-sub">Alert preferences and optional demo data</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-6">
+        <form asp-action="SaveExpiry" method="post" class="card-soft h-100" data-once novalidate>
+            <h2 class="card-title">Expiry warning period</h2>
+            <p class="text-muted">Products with stock are flagged as "expiring soon" when their expiry date is within this many days. Expired products can never be sold.</p>
+            <label asp-for="ExpiryWarningDays" class="form-label"></label>
+            <div class="input-group">
+                <input asp-for="ExpiryWarningDays" type="number" min="1" max="365" step="1" class="form-control" inputmode="numeric" />
+                <span class="input-group-text">days</span>
+            </div>
+            <span asp-validation-for="ExpiryWarningDays" class="field-error"></span>
+            <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-check2 me-1"></i>Save</button>
+        </form>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card-soft h-100">
+            <h2 class="card-title">Demo data</h2>
+            <p class="text-muted">
+                Fills the shop with sample products, suppliers, customers and about six weeks of purchases, sales and udhaar payments,
+                so you can try every screen. Everything it creates is marked <span class="badge-soft soft-muted">Demo</span>.
+                The numbers come from real saved transactions, so you can remove them at any time without touching your own data.
+            </p>
+
+            @if (demo.HasDemoData)
+            {
+                <ul class="demo-counts">
+                    <li><strong>@demo.Products</strong> products</li>
+                    <li><strong>@demo.Categories</strong> categories</li>
+                    <li><strong>@demo.Suppliers</strong> suppliers</li>
+                    <li><strong>@demo.Customers</strong> customers</li>
+                    <li><strong>@demo.Purchases</strong> purchases</li>
+                    <li><strong>@demo.Sales</strong> sales</li>
+                    <li><strong>@demo.Payments</strong> payments</li>
+                </ul>
+                <form asp-action="RemoveDemo" method="post" data-once
+                      data-confirm="Remove all demo products, customers, suppliers, purchases, sales and payments? Data you entered yourself is not touched (except where it depends on demo records, which are then kept)."
+                      data-confirm-title="Remove demo data" data-confirm-button="Yes, remove demo data">
+                    <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Remove demo data</button>
+                </form>
+            }
+            else
+            {
+                <form asp-action="LoadDemo" method="post" data-once>
+                    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-magic me-1"></i>Load demo data</button>
+                    <div class="form-text mt-2">Takes a few seconds. Demo SKUs start with DEMO-.</div>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card-soft">
+            <h2 class="card-title">How profit is calculated</h2>
+            <ul class="mb-0 text-muted">
+                <li><strong>Revenue</strong> = value of bills raised (cash and credit), after discounts.</li>
+                <li><strong>Cost of goods sold</strong> = the purchase cost saved on each sold line at the time of sale.</li>
+                <li><strong>Gross profit</strong> = revenue &minus; cost of goods sold. This is <em>not</em> net profit: rent, salaries, electricity and other expenses are not tracked in StockSense.</li>
+                <li>Credit given, udhaar payments and cash received are tracked separately, so reports never count unpaid credit as cash.</li>
+            </ul>
+        </div>
+    </div>
+</div>

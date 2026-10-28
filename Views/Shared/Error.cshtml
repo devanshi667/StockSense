@@ -1,0 +1,19 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+<div class="empty-state mx-auto" style="max-width:560px">
+    <div class="empty-icon @(Model.StatusCode == 404 ? "soft-info" : "soft-danger")">
+        <i class="bi @(Model.StatusCode == 404 ? "bi-compass" : "bi-exclamation-triangle")"></i>
+    </div>
+    @if (Model.StatusCode.HasValue)
+    {
+        <div class="text-muted small fw-semibold mb-1">Error @Model.StatusCode</div>
+    }
+    <h1 class="h4 mb-2">@Model.Title</h1>
+    <p class="text-muted">@Model.Message</p>
+    <div class="d-flex gap-2 justify-content-center flex-wrap">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary"><i class="bi bi-house me-1"></i>Go to dashboard</a>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary">Go back</a>
+    </div>
+</div>

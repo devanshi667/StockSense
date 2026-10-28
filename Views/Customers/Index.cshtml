@@ -1,0 +1,125 @@
+@model CustomerListViewModel
+@{
+    ViewData["Title"] = "Customers & udhaar";
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.Search) || Model.OnlyOutstanding;
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Customers &amp; udhaar</h1>
+        <p class="page-sub">Who buys from you and who owes you money</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Add customer</a>
+    </div>
+</div>
+
+<section class="row g-3 mb-3">
+    <div class="col-12 col-md-6">
+        <div class="stat-card">
+            <div class="stat-label">Total outstanding credit</div>
+            <div class="stat-value @(Model.TotalOutstanding > 0 ? "text-warning-emphasis" : "")">@Fmt.Money(Model.TotalOutstanding)</div>
+            <div class="stat-foot">Calculated from saved credit sales minus saved payments</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="stat-card">
+            <div class="stat-label">Customers who owe money</div>
+            <div class="stat-value">@Model.CustomersWithDues</div>
+            <div class="stat-foot">
+                <a asp-action="Index" asp-route-onlyOutstanding="true">Show only these customers</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="card-soft">
+    <form method="get" asp-action="Index" class="filter-bar">
+        <div class="filter-search">
+            <i class="bi bi-search"></i>
+            <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search name or mobile" aria-label="Search customers" />
+        </div>
+        <select name="onlyOutstanding" class="form-select" data-autosubmit aria-label="Balance filter">
+            <option value="false" selected="@(!Model.OnlyOutstanding)">All customers</option>
+            <option value="true" selected="@Model.OnlyOutstanding">With outstanding balance</option>
+        </select>
+        <button type="submit" class="btn btn-outline-primary">Apply</button>
+        @if (hasFilters)
+        {
+            <a asp-action="Index" class="btn btn-link text-muted">Clear</a>
+        }
+    </form>
+
+    @if (Model.Customers.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon soft-info"><i class="bi bi-people"></i></div>
+            @if (hasFilters)
+            {
+                <h2 class="h5">No customers found</h2>
+                <p class="text-muted">Nobody matches these filters.</p>
+                <a asp-action="Index" class="btn btn-outline-primary">Clear filters</a>
+            }
+            else
+            {
+                <h2 class="h5">No customers yet</h2>
+                <p class="text-muted">Add customers to sell on credit (udhaar) and track what they owe.</p>
+                <a asp-action="Create" class="btn btn-primary">Add customer</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-modern align-middle">
+                <thead>
+                    <tr><th>Customer</th><th>Mobile</th><th class="text-end">Credit given</th><th class="text-end">Paid</th><th class="text-end">Outstanding</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Customers.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar">@Ui.Initial(c.Name)</span>
+                                    <div>
+                                        <a asp-action="Ledger" asp-route-id="@c.Id" class="row-title">@c.Name</a>
+                                        @if (c.IsDemo)
+                                        {
+                                            <span class="badge-soft soft-muted ms-1" title="Created by the demo data loader">Demo</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(c.Address))
+                                        {
+                                            <div class="row-sub">@c.Address</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-nowrap">@c.Mobile</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(c.TotalCredit)</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(c.TotalPaid)</td>
+                            <td class="text-end text-nowrap">
+                                @if (c.Outstanding > 0)
+                                {
+                                    <span class="badge-soft soft-warning">@Fmt.Money(c.Outstanding)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Settled</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Ledger" asp-route-id="@c.Id" class="btn btn-sm btn-light" title="Open ledger"><i class="bi bi-journal-text"></i><span class="visually-hidden">Ledger of @c.Name</span></a>
+                                <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-light" title="Edit"><i class="bi bi-pencil"></i><span class="visually-hidden">Edit @c.Name</span></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="list-foot">
+            <span class="text-muted small">Showing @Model.Customers.FirstItemNumber&ndash;@Model.Customers.LastItemNumber of @Model.Customers.TotalCount customer(s)</span>
+            <partial name="_Pager" model="Model.Customers" />
+        </div>
+    }
+</div>

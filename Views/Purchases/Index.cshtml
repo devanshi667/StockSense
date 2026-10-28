@@ -1,0 +1,92 @@
+@model PurchaseListViewModel
+@{
+    ViewData["Title"] = "Purchases";
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.Search) || Model.SupplierId.HasValue || Model.From.HasValue || Model.To.HasValue;
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Purchases</h1>
+        <p class="page-sub">Stock bought from suppliers. Saving a purchase increases inventory.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Record purchase</a>
+    </div>
+</div>
+
+<div class="card-soft">
+    <form method="get" asp-action="Index" class="filter-bar">
+        <div class="filter-search">
+            <i class="bi bi-search"></i>
+            <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search number, supplier or product" aria-label="Search purchases" />
+        </div>
+        <select name="supplierId" class="form-select" data-autosubmit aria-label="Filter by supplier">
+            <option value="">All suppliers</option>
+            @foreach (var s in Model.Suppliers)
+            {
+                <option value="@s.Value" selected="@(Model.SupplierId.HasValue && s.Value == Model.SupplierId.Value.ToString())">@s.Text</option>
+            }
+        </select>
+        <input type="date" name="from" value="@Ui.IsoDate(Model.From)" class="form-control" aria-label="From date" title="From date" />
+        <input type="date" name="to" value="@Ui.IsoDate(Model.To)" class="form-control" aria-label="To date" title="To date" />
+        <button type="submit" class="btn btn-outline-primary">Apply</button>
+        @if (hasFilters)
+        {
+            <a asp-action="Index" class="btn btn-link text-muted">Clear</a>
+        }
+    </form>
+
+    @if (Model.Purchases.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon soft-info"><i class="bi bi-truck"></i></div>
+            @if (hasFilters)
+            {
+                <h2 class="h5">No purchases match your filters</h2>
+                <a asp-action="Index" class="btn btn-outline-primary">Clear filters</a>
+            }
+            else
+            {
+                <h2 class="h5">No purchases recorded yet</h2>
+                <p class="text-muted">Record a purchase to bring stock into your shop.</p>
+                <a asp-action="Create" class="btn btn-primary">Record purchase</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="summary-strip">
+            <span>Total of all matching purchases: <strong>@Fmt.Money(Model.RangeTotal)</strong></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-modern align-middle">
+                <thead><tr><th>Purchase</th><th>Date</th><th>Supplier</th><th class="text-end">Items</th><th class="text-end">Total</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                    @foreach (var p in Model.Purchases.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@p.Id" class="row-title">@p.PurchaseNumber</a>
+                                @if (p.IsDemo)
+                                {
+                                    <span class="badge-soft soft-muted ms-1" title="Created by the demo data loader">Demo</span>
+                                }
+                            </td>
+                            <td class="text-nowrap">@Fmt.Date(p.PurchaseDate)</td>
+                            <td>@p.SupplierName</td>
+                            <td class="text-end">@p.ItemCount</td>
+                            <td class="text-end text-nowrap fw-semibold">@Fmt.Money(p.TotalAmount)</td>
+                            <td class="text-end">
+                                <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-light" title="View"><i class="bi bi-eye"></i><span class="visually-hidden">View @p.PurchaseNumber</span></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="list-foot">
+            <span class="text-muted small">Showing @Model.Purchases.FirstItemNumber&ndash;@Model.Purchases.LastItemNumber of @Model.Purchases.TotalCount purchase(s)</span>
+            <partial name="_Pager" model="Model.Purchases" />
+        </div>
+    }
+</div>

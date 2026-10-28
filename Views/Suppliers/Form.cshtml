@@ -1,0 +1,47 @@
+@model SupplierFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Edit supplier" : "Add supplier";
+    var formAction = Model.IsEdit ? Url.Action("Edit", "Suppliers", new { id = Model.Id }) : Url.Action("Create", "Suppliers");
+    var cancelUrl = Model.IsEdit ? Url.Action("Details", "Suppliers", new { id = Model.Id }) : Url.Action("Index", "Suppliers");
+}
+
+<div class="page-head">
+    <div>
+        <a href="@cancelUrl" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+        <h1 class="page-title mt-1">@(Model.IsEdit ? "Edit supplier" : "Add supplier")</h1>
+    </div>
+</div>
+
+<form action="@formAction" method="post" class="card-soft form-card narrow" data-once novalidate>
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="row g-3">
+        <div class="col-12">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" maxlength="120" autofocus />
+            <span asp-validation-for="Name" class="field-error"></span>
+        </div>
+        <div class="col-12 col-md-6">
+            <label asp-for="Phone" class="form-label">Phone (optional)</label>
+            <input asp-for="Phone" class="form-control" maxlength="20" inputmode="tel" />
+            <span asp-validation-for="Phone" class="field-error"></span>
+        </div>
+        <div class="col-12 col-md-6">
+            <label asp-for="Address" class="form-label">Address (optional)</label>
+            <input asp-for="Address" class="form-control" maxlength="250" />
+            <span asp-validation-for="Address" class="field-error"></span>
+        </div>
+        <div class="col-12">
+            <label asp-for="Notes" class="form-label">Notes (optional)</label>
+            <textarea asp-for="Notes" class="form-control" rows="2" maxlength="300"></textarea>
+            <span asp-validation-for="Notes" class="field-error"></span>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>@(Model.IsEdit ? "Save changes" : "Add supplier")</button>
+        <a href="@cancelUrl" class="btn btn-light">Cancel</a>
+    </div>
+</form>

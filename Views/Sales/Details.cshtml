@@ -1,0 +1,117 @@
+@model Sale
+@{
+    ViewData["Title"] = Model.InvoiceNumber;
+    var credit = Model.CreditAmount;
+    var grossProfit = Model.Items.Sum(i => i.GrossProfit);
+}
+
+<div class="page-head no-print">
+    <div>
+        <a asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Sales history</a>
+        <h1 class="page-title mt-1">@Model.InvoiceNumber</h1>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-outline-secondary" data-print><i class="bi bi-printer me-1"></i>Print</button>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-8">
+        <section class="card-soft invoice">
+            <div class="invoice-head">
+                <div>
+                    <div class="invoice-brand"><i class="bi bi-basket2-fill"></i> StockSense</div>
+                    <div class="text-muted small">Tax invoice / bill</div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-semibold">@Model.InvoiceNumber</div>
+                    <div class="text-muted small">@Fmt.Stamp(Model.SaleDate)</div>
+                    @if (Model.IsDemo)
+                    {
+                        <span class="badge-soft soft-muted">Demo data</span>
+                    }
+                </div>
+            </div>
+
+            <div class="invoice-party">
+                <span class="text-muted small">Billed to</span>
+                @if (Model.Customer != null)
+                {
+                    <div class="fw-semibold"><a asp-controller="Customers" asp-action="Ledger" asp-route-id="@Model.Customer.Id">@Model.Customer.Name</a></div>
+                    <div class="text-muted small">@Model.Customer.Mobile</div>
+                }
+                else
+                {
+                    <div class="fw-semibold">Walk-in customer</div>
+                }
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-modern align-middle mb-0">
+                    <thead><tr><th>#</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>
+                        @{ var line = 0; }
+                        @foreach (var item in Model.Items)
+                        {
+                            line++;
+                            <tr>
+                                <td class="text-muted">@line</td>
+                                <td>
+                                    <a asp-controller="Products" asp-action="Details" asp-route-id="@item.ProductId" class="row-title">@(item.Product?.Name ?? ("Product #" + item.ProductId))</a>
+                                    <div class="row-sub">@(item.Product?.Sku)</div>
+                                </td>
+                                <td class="text-end text-nowrap">@Fmt.Qty(item.Quantity) @(item.Product?.Unit)</td>
+                                <td class="text-end text-nowrap">@Fmt.Money(item.UnitPrice)</td>
+                                <td class="text-end text-nowrap">@Fmt.Money(item.LineTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <dl class="totals">
+                <div><dt>Subtotal</dt><dd>@Fmt.Money(Model.SubTotal)</dd></div>
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div><dt>Discount</dt><dd>-@Fmt.Money(Model.DiscountAmount)</dd></div>
+                }
+                <div class="grand"><dt>Total</dt><dd>@Fmt.Money(Model.TotalAmount)</dd></div>
+                <div><dt>Paid at sale@(Model.AmountPaid > 0 ? " (" + Fmt.Method(Model.PaymentMethod) + ")" : "")</dt><dd>@Fmt.Money(Model.AmountPaid)</dd></div>
+                @if (credit > 0)
+                {
+                    <div class="due"><dt>On credit (udhaar)</dt><dd>@Fmt.Money(credit)</dd></div>
+                }
+            </dl>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+            {
+                <div class="text-muted"><i class="bi bi-sticky me-1"></i>@Model.Notes</div>
+            }
+        </section>
+    </div>
+
+    <div class="col-12 col-xl-4 no-print">
+        <section class="card-soft mb-3">
+            <h2 class="card-title mb-2">Payment status</h2>
+            @if (credit <= 0)
+            {
+                <span class="badge-soft soft-success"><i class="bi bi-check-circle me-1"></i>Fully paid</span>
+            }
+            else
+            {
+                <span class="badge-soft soft-warning"><i class="bi bi-hourglass me-1"></i>@Fmt.Money(credit) put on credit</span>
+                @if (Model.Customer != null)
+                {
+                    <p class="text-muted small mt-2 mb-2">Later payments are recorded on the customer's ledger.</p>
+                    <a asp-controller="Customers" asp-action="Ledger" asp-route-id="@Model.Customer.Id" class="btn btn-outline-primary btn-sm">Open ledger</a>
+                }
+            }
+        </section>
+        <section class="card-soft">
+            <h2 class="card-title mb-2">Profit on this bill</h2>
+            <div class="mini-stat-value text-success">@Fmt.Money(grossProfit)</div>
+            <div class="text-muted small">Gross profit: bill value minus the purchase cost saved at the time of sale. It is before shop expenses.</div>
+        </section>
+    </div>
+</div>

@@ -1,0 +1,267 @@
+@model ReportViewModel
+@{
+    ViewData["Title"] = "Reports";
+    var s = Model.Summary;
+    var periodValue = Model.Period.ToString().ToLowerInvariant();
+    var productRevenue = Model.Products.Sum(p => p.Revenue);
+    var productCost = Model.Products.Sum(p => p.Cost);
+    var maxQty = Model.BestSellers.Count == 0 ? 1m : Model.BestSellers.Max(p => p.Quantity);
+}
+
+<div class="page-head no-print">
+    <div>
+        <h1 class="page-title">Sales &amp; profit reports</h1>
+        <p class="page-sub">@Model.PeriodLabel view &middot; @Fmt.Date(Model.From) to @Fmt.Date(Model.To)</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-outline-secondary" data-print><i class="bi bi-printer me-1"></i>Print</button>
+    </div>
+</div>
+
+<div class="card-soft mb-3 no-print">
+    <div class="preset-row">
+        @foreach (var preset in Model.Presets)
+        {
+            <a class="chip-filter" asp-action="Index"
+               asp-route-period="@preset.Period.ToString().ToLowerInvariant()"
+               asp-route-from="@Ui.IsoDate(preset.From)"
+               asp-route-to="@Ui.IsoDate(preset.To)">@preset.Label</a>
+        }
+    </div>
+    <form method="get" asp-action="Index" class="filter-bar mt-2">
+        <div>
+            <label for="rpPeriod" class="form-label small mb-1">Group by</label>
+            <select id="rpPeriod" name="period" class="form-select">
+                <option value="daily" selected="@(periodValue == "daily")">Daily</option>
+                <option value="weekly" selected="@(periodValue == "weekly")">Weekly</option>
+                <option value="monthly" selected="@(periodValue == "monthly")">Monthly</option>
+            </select>
+        </div>
+        <div>
+            <label for="rpFrom" class="form-label small mb-1">From</label>
+            <input id="rpFrom" type="date" name="from" value="@Ui.IsoDate(Model.From)" class="form-control" />
+        </div>
+        <div>
+            <label for="rpTo" class="form-label small mb-1">To</label>
+            <input id="rpTo" type="date" name="to" value="@Ui.IsoDate(Model.To)" class="form-control" />
+        </div>
+        <div class="align-self-end">
+            <button type="submit" class="btn btn-primary">Show report</button>
+        </div>
+    </form>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.RangeNotice))
+{
+    <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>@Model.RangeNotice</div>
+}
+
+<section class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Total sales revenue</div>
+            <div class="stat-value">@Fmt.Money(s.Revenue)</div>
+            <div class="stat-foot">@s.SalesCount bill(s)@(s.DiscountGiven > 0 ? $" · {Fmt.Money(s.DiscountGiven)} discounts" : "")</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Cost of goods sold</div>
+            <div class="stat-value">@Fmt.Money(s.Cogs)</div>
+            <div class="stat-foot">Purchase cost saved at time of sale</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card stat-good">
+            <div class="stat-label">Gross profit</div>
+            <div class="stat-value">@Fmt.Money(s.GrossProfit)</div>
+            <div class="stat-foot">@Fmt.Pct(s.MarginPercent) margin</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Average bill</div>
+            <div class="stat-value">@Fmt.Money(s.SalesCount == 0 ? 0m : s.Revenue / s.SalesCount)</div>
+            <div class="stat-foot">Revenue &divide; number of bills</div>
+        </div>
+    </div>
+</section>
+
+<div class="alert alert-light border d-flex gap-2 align-items-start">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div class="small">
+        <strong>Gross profit is not net profit.</strong> It is revenue minus the cost of the goods sold. Shop expenses such as rent, salaries and electricity are not recorded in StockSense, so net profit is not shown.
+    </div>
+</div>
+
+<section class="card-soft mb-3">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Revenue vs cash received</h2>
+            <p class="card-sub">Credit sales are revenue but not cash until the customer pays</p>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-6 col-lg-3">
+            <div class="mini-stat-label">Revenue (all bills)</div>
+            <div class="mini-stat-value">@Fmt.Money(s.Revenue)</div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="mini-stat-label">Paid at time of sale</div>
+            <div class="mini-stat-value">@Fmt.Money(s.PaidAtSale)</div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="mini-stat-label">Put on credit (udhaar)</div>
+            <div class="mini-stat-value text-warning-emphasis">@Fmt.Money(s.CreditGiven)</div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="mini-stat-label">Udhaar payments collected</div>
+            <div class="mini-stat-value text-success">@Fmt.Money(s.UdhaarCollected)</div>
+        </div>
+    </div>
+    <div class="summary-strip mt-3 mb-0">
+        <span>Total cash received in this period: <strong>@Fmt.Money(s.TotalCashReceived)</strong> (paid at sale + udhaar collected)</span>
+    </div>
+</section>
+
+<section class="card-soft mb-3">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">@Model.PeriodLabel sales &amp; gross profit</h2>
+            <p class="card-sub">From completed sales in the selected range</p>
+        </div>
+    </div>
+    @if (Model.HasData)
+    {
+        <div class="chart-box"><canvas id="reportChart" aria-label="Sales and gross profit chart" role="img"></canvas></div>
+        <div class="table-responsive mt-3">
+            <table class="table table-modern table-sm align-middle mb-0">
+                <thead><tr><th>@(Model.Period == ReportPeriod.Daily ? "Day" : Model.Period == ReportPeriod.Weekly ? "Week starting" : "Month")</th><th class="text-end">Sales</th><th class="text-end">Cost of goods</th><th class="text-end">Gross profit</th></tr></thead>
+                <tbody>
+                    @foreach (var point in Model.Series)
+                    {
+                        <tr class="@(point.Sales == 0 ? "text-muted" : "")">
+                            <td>@point.Label</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(point.Sales)</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(point.Cogs)</td>
+                            <td class="text-end text-nowrap fw-semibold">@Fmt.Money(point.GrossProfit)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="total-row"><td>Total</td><td class="text-end">@Fmt.Money(Model.Series.Sum(p => p.Sales))</td><td class="text-end">@Fmt.Money(Model.Series.Sum(p => p.Cogs))</td><td class="text-end">@Fmt.Money(Model.Series.Sum(p => p.GrossProfit))</td></tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-inline"><i class="bi bi-bar-chart"></i><span>No sales were recorded between @Fmt.Date(Model.From) and @Fmt.Date(Model.To).</span></div>
+    }
+</section>
+
+@if (Model.HasData)
+{
+    <section class="row g-3 mb-3">
+        <div class="col-12 col-xl-7">
+            <div class="card-soft h-100">
+                <div class="card-head">
+                    <div>
+                        <h2 class="card-title">Product-wise gross profit</h2>
+                        <p class="card-sub">Revenue is after each product's share of bill discounts</p>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-modern table-sm align-middle mb-0">
+                        <thead><tr><th>Product</th><th class="text-end">Qty sold</th><th class="text-end">Revenue</th><th class="text-end">Cost</th><th class="text-end">Gross profit</th><th class="text-end">Margin</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Model.Products)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductId" class="row-title">@p.Name</a>
+                                        <div class="row-sub">@p.Sku</div>
+                                    </td>
+                                    <td class="text-end text-nowrap">@Fmt.Qty(p.Quantity) @p.Unit</td>
+                                    <td class="text-end text-nowrap">@Fmt.Money(p.Revenue)</td>
+                                    <td class="text-end text-nowrap">@Fmt.Money(p.Cost)</td>
+                                    <td class="text-end text-nowrap fw-semibold @(p.GrossProfit < 0 ? "text-danger" : "")">@Fmt.Money(p.GrossProfit)</td>
+                                    <td class="text-end text-nowrap">@Fmt.Pct(p.MarginPercent)</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row"><td>Total</td><td></td><td class="text-end">@Fmt.Money(productRevenue)</td><td class="text-end">@Fmt.Money(productCost)</td><td class="text-end">@Fmt.Money(productRevenue - productCost)</td><td></td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-5">
+            <div class="card-soft h-100">
+                <div class="card-head">
+                    <div>
+                        <h2 class="card-title">Best-selling products</h2>
+                        <p class="card-sub">Top 10 by quantity sold</p>
+                    </div>
+                </div>
+                <ol class="best-list">
+                    @foreach (var p in Model.BestSellers)
+                    {
+                        <li>
+                            <div class="d-flex justify-content-between gap-2">
+                                <a asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductId" class="row-title">@p.Name</a>
+                                <span class="text-nowrap fw-semibold">@Fmt.Qty(p.Quantity) <span class="text-muted fw-normal">@p.Unit</span></span>
+                            </div>
+                            <div class="bar"><span style="width:@((int)(p.Quantity / maxQty * 100m))%"></span></div>
+                            <div class="row-sub">@Fmt.Money(p.Revenue) revenue &middot; @Fmt.Money(p.GrossProfit) gross profit</div>
+                        </li>
+                    }
+                </ol>
+            </div>
+        </div>
+    </section>
+
+    <section class="card-soft">
+        <div class="card-head">
+            <div>
+                <h2 class="card-title">Sales transactions</h2>
+                <p class="card-sub">
+                    @(Model.TotalSalesInRange > Model.Sales.Count ? $"Latest {Model.Sales.Count} of {Model.TotalSalesInRange} bills" : $"{Model.TotalSalesInRange} bill(s)")
+                </p>
+            </div>
+            <a asp-controller="Sales" asp-action="Index" asp-route-from="@Ui.IsoDate(Model.From)" asp-route-to="@Ui.IsoDate(Model.To)" class="btn btn-sm btn-outline-primary no-print">Open in sales history</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-modern table-sm align-middle mb-0">
+                <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th class="text-end">Total</th><th class="text-end">Paid at sale</th><th class="text-end">On credit</th></tr></thead>
+                <tbody>
+                    @foreach (var sale in Model.Sales)
+                    {
+                        <tr>
+                            <td><a asp-controller="Sales" asp-action="Details" asp-route-id="@sale.Id" class="row-title">@sale.InvoiceNumber</a></td>
+                            <td class="text-nowrap">@Fmt.Stamp(sale.SaleDate)</td>
+                            <td>@(string.IsNullOrWhiteSpace(sale.CustomerName) ? "Walk-in" : sale.CustomerName)</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(sale.TotalAmount)</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(sale.AmountPaid)</td>
+                            <td class="text-end text-nowrap">@(sale.CreditAmount > 0 ? Fmt.Money(sale.CreditAmount) : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@section Scripts {
+    @if (Model.HasData)
+    {
+        <script type="application/json" id="reportSeries">@Json.Serialize(Model.Series.Select(p => new { label = p.Label, sales = p.Sales, profit = p.GrossProfit }).ToList())</script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                StockSense.salesProfitChart('reportChart', StockSense.readJson('reportSeries'));
+            });
+        </script>
+    }
+}

@@ -1,0 +1,23 @@
+@model CategoryFormViewModel
+@{
+    ViewData["Title"] = "Rename category";
+}
+
+<div class="page-head">
+    <div>
+        <a asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Categories</a>
+        <h1 class="page-title mt-1">Rename category</h1>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card-soft form-card narrow" data-once novalidate>
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <label asp-for="Name" class="form-label"></label>
+    <input asp-for="Name" class="form-control" maxlength="80" autofocus />
+    <span asp-validation-for="Name" class="field-error"></span>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
+        <a asp-action="Index" class="btn btn-light">Cancel</a>
+    </div>
+</form>

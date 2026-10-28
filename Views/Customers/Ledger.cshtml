@@ -1,0 +1,186 @@
+@model CustomerLedgerViewModel
+@{
+    var c = Model.Customer;
+    ViewData["Title"] = c.Name + " - ledger";
+    var outstanding = Model.Balance.Outstanding;
+    var openPayment = ViewData["OpenPayment"] is true;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Customers</a>
+        <h1 class="page-title mt-1">
+            @c.Name
+            @if (c.IsDemo)
+            {
+                <span class="badge-soft soft-muted align-middle ms-1" title="Created by the demo data loader">Demo</span>
+            }
+        </h1>
+        <p class="page-sub">
+            <span class="chip"><i class="bi bi-telephone"></i> @c.Mobile</span>
+            @if (!string.IsNullOrWhiteSpace(c.Address))
+            {
+                <span class="chip"><i class="bi bi-geo-alt"></i> @c.Address</span>
+            }
+        </p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <a asp-controller="Sales" asp-action="Create" asp-route-customerId="@c.Id" class="btn btn-outline-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
+        @if (outstanding > 0)
+        {
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentModal"><i class="bi bi-cash-coin me-1"></i>Record payment</button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-primary" disabled title="Nothing is outstanding"><i class="bi bi-cash-coin me-1"></i>Record payment</button>
+        }
+    </div>
+</div>
+
+<section class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Total credit given</div>
+            <div class="stat-value">@Fmt.Money(Model.Balance.TotalCredit)</div>
+            <div class="stat-foot">Unpaid part of all bills</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Payments received</div>
+            <div class="stat-value text-success">@Fmt.Money(Model.Balance.TotalPaid)</div>
+            <div class="stat-foot">Saved udhaar payments</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card @(outstanding > 0 ? "stat-warn" : "")">
+            <div class="stat-label">Outstanding balance</div>
+            <div class="stat-value">@Fmt.Money(outstanding)</div>
+            <div class="stat-foot">@(outstanding > 0 ? "Still to be collected" : "All settled")</div>
+        </div>
+    </div>
+</section>
+
+<div class="card-soft mb-3">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Ledger</h2>
+            <p class="card-sub">Credit sales add to the balance, payments reduce it. Fully paid bills are not listed here.</p>
+        </div>
+    </div>
+    @if (Model.Entries.Count == 0)
+    {
+        <div class="empty-inline"><i class="bi bi-journal"></i><span>No credit sales or payments yet.</span></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead>
+                    <tr><th>Date</th><th>Entry</th><th>Details</th><th class="text-end">Credit given</th><th class="text-end">Payment</th><th class="text-end">Balance</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.Entries)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@Fmt.Date(e.Date)</td>
+                            <td class="text-nowrap">
+                                @if (e.SaleId.HasValue)
+                                {
+                                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@e.SaleId.Value" class="row-title">@e.Reference</a>
+                                    <div class="row-sub">@e.Type</div>
+                                }
+                                else
+                                {
+                                    <span class="row-title">@e.Reference</span>
+                                    <div class="row-sub">@e.Type</div>
+                                }
+                            </td>
+                            <td>@e.Description</td>
+                            <td class="text-end text-nowrap">@(e.CreditGiven > 0 ? Fmt.Money(e.CreditGiven) : "—")</td>
+                            <td class="text-end text-nowrap text-success">@(e.PaymentReceived > 0 ? Fmt.Money(e.PaymentReceived) : "—")</td>
+                            <td class="text-end text-nowrap fw-semibold">@Fmt.Money(e.Balance)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="card-soft">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="text-muted small">Customer since @Fmt.Date(c.CreatedAt)</div>
+        <form asp-action="Delete" asp-route-id="@c.Id" method="post" data-once
+              data-confirm="Delete the customer &quot;@c.Name&quot;? This only works if they have no sales or payments."
+              data-confirm-title="Delete customer" data-confirm-button="Yes, delete">
+            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i>Delete customer</button>
+        </form>
+    </div>
+</div>
+
+@if (outstanding > 0 || openPayment)
+{
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentTitle" aria-hidden="true" data-open="@(openPayment ? "true" : "false")">
+        <div class="modal-dialog modal-dialog-centered">
+            <form asp-action="AddPayment" asp-route-id="@c.Id" method="post" class="modal-content" data-once novalidate>
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5" id="paymentTitle">Record payment from @c.Name</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" asp-for="Payment.ClientToken" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    <div class="alert alert-light border small mb-3">Outstanding balance: <strong>@Fmt.Money(outstanding)</strong>. A payment cannot be more than this.</div>
+
+                    <div class="mb-3">
+                        <label asp-for="Payment.Amount" class="form-label">Amount received</label>
+                        <div class="input-group">
+                            <span class="input-group-text">&#8377;</span>
+                            <input asp-for="Payment.Amount" type="number" step="0.01" min="0.01" max="@Ui.Num(outstanding)" class="form-control" inputmode="decimal" id="payAmount" />
+                            <button type="button" class="btn btn-outline-primary" id="payFull" data-amount="@Ui.Num(outstanding)">Full balance</button>
+                        </div>
+                        <span asp-validation-for="Payment.Amount" class="field-error"></span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label asp-for="Payment.Method" class="form-label">Method</label>
+                            <select asp-for="Payment.Method" asp-items="Model.PaymentMethods" class="form-select"></select>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Payment.PaymentDate" class="form-label">Date</label>
+                            <input asp-for="Payment.PaymentDate" type="date" class="form-control" max="@Ui.IsoDate(DateTime.Today)" />
+                            <span asp-validation-for="Payment.PaymentDate" class="field-error"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Payment.Notes" class="form-label">Note (optional)</label>
+                            <input asp-for="Payment.Notes" class="form-control" maxlength="200" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var modalEl = document.getElementById('paymentModal');
+            if (!modalEl) { return; }
+            var full = document.getElementById('payFull');
+            var amount = document.getElementById('payAmount');
+            if (full && amount) {
+                full.addEventListener('click', function () { amount.value = full.getAttribute('data-amount'); amount.focus(); });
+            }
+            if (modalEl.getAttribute('data-open') === 'true' && window.bootstrap) {
+                new bootstrap.Modal(modalEl).show();
+            }
+        });
+    </script>
+}

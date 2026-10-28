@@ -1,0 +1,244 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var stock = Model.Stock;
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Live numbers from your saved sales, purchases and stock &middot; @DateTime.Now.ToString("dd MMM yyyy")</p>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="Purchases" asp-action="Create" class="btn btn-outline-primary"><i class="bi bi-truck me-1"></i>Record purchase</a>
+        <a asp-controller="Sales" asp-action="Create" class="btn btn-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
+    </div>
+</div>
+
+@if (Model.IsEmpty)
+{
+    <section class="welcome-card mb-4">
+        <div class="welcome-icon"><i class="bi bi-stars"></i></div>
+        <div class="flex-grow-1">
+            <h2 class="h5 mb-1">Welcome to StockSense</h2>
+            <p class="mb-3 text-muted">Your database is empty, so every number below is zero. Set up your shop in this order:</p>
+            <ol class="welcome-steps">
+                <li><a asp-controller="Categories" asp-action="Index">Add categories</a> (for example Dairy, Grains)</li>
+                <li><a asp-controller="Products" asp-action="Create">Add products</a> with cost, price and minimum stock</li>
+                <li><a asp-controller="Suppliers" asp-action="Create">Add a supplier</a> and <a asp-controller="Purchases" asp-action="Create">record a purchase</a> to bring stock in</li>
+                <li><a asp-controller="Sales" asp-action="Create">Make your first sale</a></li>
+            </ol>
+            <form asp-controller="Settings" asp-action="LoadDemo" method="post" class="d-inline" data-once>
+                <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-magic me-1"></i>Or load clearly-marked demo data</button>
+            </form>
+        </div>
+    </section>
+}
+
+<section class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <a class="kpi" asp-controller="Products" asp-action="Index">
+            <span class="kpi-icon soft-success"><i class="bi bi-box-seam"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Total products</span>
+                <span class="kpi-value">@stock.TotalProducts</span>
+                <span class="kpi-sub">in your catalogue</span>
+            </span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a class="kpi" asp-controller="Stock" asp-action="Index" asp-route-kind="low">
+            <span class="kpi-icon @(stock.LowStock > 0 ? "soft-warning" : "soft-success")"><i class="bi bi-arrow-down-circle"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Low-stock products</span>
+                <span class="kpi-value">@stock.LowStock</span>
+                <span class="kpi-sub">@(stock.OutOfStock > 0 ? $"{stock.OutOfStock} out of stock" : "none out of stock")</span>
+            </span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a class="kpi" asp-controller="Stock" asp-action="Index" asp-route-kind="expiring">
+            <span class="kpi-icon @(stock.ExpiringSoon + stock.Expired > 0 ? "soft-danger" : "soft-success")"><i class="bi bi-hourglass-split"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Expiring soon</span>
+                <span class="kpi-value">@stock.ExpiringSoon</span>
+                <span class="kpi-sub">@(stock.Expired > 0 ? $"{stock.Expired} already expired" : $"within {Model.ExpiryWarningDays} days")</span>
+            </span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a class="kpi" asp-controller="Sales" asp-action="Index" asp-route-from="@Ui.IsoDate(DateTime.Today)" asp-route-to="@Ui.IsoDate(DateTime.Today)">
+            <span class="kpi-icon soft-success"><i class="bi bi-currency-rupee"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Today's sales</span>
+                <span class="kpi-value">@Fmt.Money(Model.TodaySales)</span>
+                <span class="kpi-sub">@Model.TodaySalesCount bill(s) today</span>
+            </span>
+        </a>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <a class="kpi" asp-controller="Customers" asp-action="Index" asp-route-onlyOutstanding="true">
+            <span class="kpi-icon @(Model.OutstandingCredit > 0 ? "soft-warning" : "soft-success")"><i class="bi bi-wallet2"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Outstanding customer credit</span>
+                <span class="kpi-value">@Fmt.Money(Model.OutstandingCredit)</span>
+                <span class="kpi-sub">@Model.CustomersWithDues customer(s) owe money</span>
+            </span>
+        </a>
+    </div>
+    <div class="col-6 col-md-4">
+        <a class="kpi" asp-controller="Reports" asp-action="Index" asp-route-period="daily" asp-route-from="@Ui.IsoDate(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))" asp-route-to="@Ui.IsoDate(DateTime.Today)">
+            <span class="kpi-icon soft-info"><i class="bi bi-bar-chart-line"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Sales &middot; @Model.MonthLabel</span>
+                <span class="kpi-value">@Fmt.Money(Model.Month.Revenue)</span>
+                <span class="kpi-sub">@Model.Month.SalesCount bill(s) this month</span>
+            </span>
+        </a>
+    </div>
+    <div class="col-6 col-md-4">
+        <a class="kpi" asp-controller="Reports" asp-action="Index" asp-route-period="daily" asp-route-from="@Ui.IsoDate(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))" asp-route-to="@Ui.IsoDate(DateTime.Today)">
+            <span class="kpi-icon soft-success"><i class="bi bi-graph-up-arrow"></i></span>
+            <span class="kpi-body">
+                <span class="kpi-label">Gross profit &middot; @Model.MonthLabel</span>
+                <span class="kpi-value">@Fmt.Money(Model.Month.GrossProfit)</span>
+                <span class="kpi-sub">@Fmt.Pct(Model.Month.MarginPercent) margin &middot; before expenses</span>
+            </span>
+        </a>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12 col-xl-8">
+        <div class="card-soft h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Monthly sales &amp; gross profit</h2>
+                    <p class="card-sub">Last 6 months, from completed sales</p>
+                </div>
+            </div>
+            @if (Model.MonthlySeries.Any(p => p.Sales > 0))
+            {
+                <div class="chart-box"><canvas id="monthlyChart" aria-label="Monthly sales and gross profit chart" role="img"></canvas></div>
+            }
+            else
+            {
+                <div class="empty-inline"><i class="bi bi-bar-chart"></i><span>No sales yet. The chart appears after your first sale.</span></div>
+            }
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <div class="card-soft h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Stock &amp; expiry alerts</h2>
+                    <p class="card-sub">@(Model.TotalAlertCount == 0 ? "Nothing needs attention" : $"{Model.TotalAlertCount} item(s) need attention")</p>
+                </div>
+                @if (Model.TotalAlertCount > 0)
+                {
+                    <a asp-controller="Stock" asp-action="Index" class="btn btn-sm btn-outline-primary">View all</a>
+                }
+            </div>
+
+            @if (Model.Alerts.Count == 0)
+            {
+                <div class="empty-inline"><i class="bi bi-check2-circle"></i><span>All products are well stocked and within their expiry dates.</span></div>
+            }
+            else
+            {
+                <ul class="alert-list">
+                    @foreach (var alert in Model.Alerts)
+                    {
+                        <li class="alert-row">
+                            <span class="alert-icon @Ui.SeverityClass(alert.Severity)"><i class="bi @Ui.KindIcon(alert.Kind)"></i></span>
+                            <div class="alert-body">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <a class="alert-name" asp-controller="Products" asp-action="Details" asp-route-id="@alert.ProductId">@alert.ProductName</a>
+                                    <span class="badge-soft @Ui.SeverityClass(alert.Severity)">@alert.Title</span>
+                                </div>
+                                <div class="alert-msg">@alert.Message</div>
+                                <div class="alert-action"><i class="bi bi-lightbulb"></i> @alert.RecommendedAction</div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="row g-3">
+    <div class="col-12 col-xl-7">
+        <div class="card-soft h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Recent transactions</h2>
+                    <p class="card-sub">Latest sales, purchases and udhaar payments</p>
+                </div>
+            </div>
+            @if (Model.Recent.Count == 0)
+            {
+                <div class="empty-inline"><i class="bi bi-receipt"></i><span>No transactions yet.</span></div>
+            }
+            else
+            {
+                <ul class="txn-list">
+                    @foreach (var t in Model.Recent)
+                    {
+                        <li>
+                            <a class="txn-row" asp-controller="@t.Controller" asp-action="@t.Action" asp-route-id="@t.RouteId">
+                                <span class="txn-icon @Ui.TransactionClass(t.Type)"><i class="bi @Ui.TransactionIcon(t.Type)"></i></span>
+                                <span class="txn-main">
+                                    <span class="txn-title">@t.Title</span>
+                                    <span class="txn-sub">@t.Type &middot; @t.Subtitle</span>
+                                </span>
+                                <span class="txn-side">
+                                    <span class="txn-amount @(t.Type == "Purchase" ? "text-muted" : "")">@(t.Type == "Purchase" ? "-" : "+")@Fmt.Money(t.Amount)</span>
+                                    <span class="txn-date">@Fmt.Date(t.Date)</span>
+                                </span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+        <div class="card-soft h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Daily sales</h2>
+                    <p class="card-sub">Last 14 days</p>
+                </div>
+            </div>
+            @if (Model.DailySeries.Any(p => p.Sales > 0))
+            {
+                <div class="chart-box chart-sm"><canvas id="dailyChart" aria-label="Daily sales chart for the last 14 days" role="img"></canvas></div>
+            }
+            else
+            {
+                <div class="empty-inline"><i class="bi bi-graph-up"></i><span>No sales in the last 14 days.</span></div>
+            }
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script type="application/json" id="monthlyData">@Json.Serialize(Model.MonthlySeries.Select(p => new { label = p.Label, sales = p.Sales, profit = p.GrossProfit }))</script>
+    <script type="application/json" id="dailyData">@Json.Serialize(Model.DailySeries.Select(p => new { label = p.Label, sales = p.Sales, profit = p.GrossProfit }))</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.getElementById('monthlyChart')) {
+                StockSense.salesProfitChart('monthlyChart', StockSense.readJson('monthlyData'));
+            }
+            if (document.getElementById('dailyChart')) {
+                StockSense.salesBarChart('dailyChart', StockSense.readJson('dailyData'));
+            }
+        });
+    </script>
+}

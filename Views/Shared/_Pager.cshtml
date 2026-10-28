@@ -1,0 +1,40 @@
+@model IPagedInfo
+@if (Model.TotalPages > 1)
+{
+    string PageLink(int target)
+    {
+        var parts = new List<string>();
+        foreach (var pair in Context.Request.Query)
+        {
+            if (string.Equals(pair.Key, "page", StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var value in pair.Value)
+            {
+                parts.Add(Uri.EscapeDataString(pair.Key) + "=" + Uri.EscapeDataString(value ?? string.Empty));
+            }
+        }
+
+        parts.Add("page=" + target);
+        return Context.Request.Path.Value + "?" + string.Join("&", parts);
+    }
+
+    var first = Math.Max(1, Model.Page - 2);
+    var last = Math.Min(Model.TotalPages, first + 4);
+    first = Math.Max(1, last - 4);
+
+    <nav aria-label="Pagination">
+        <ul class="pagination pagination-sm mb-0 flex-wrap">
+            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@PageLink(Model.Page - 1)" aria-label="Previous page"><i class="bi bi-chevron-left"></i></a>
+            </li>
+            @for (var i = first; i <= last; i++)
+            {
+                <li class="page-item @(i == Model.Page ? "active" : "")">
+                    <a class="page-link" href="@PageLink(i)">@i</a>
+                </li>
+            }
+            <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@PageLink(Model.Page + 1)" aria-label="Next page"><i class="bi bi-chevron-right"></i></a>
+            </li>
+        </ul>
+    </nav>
+}

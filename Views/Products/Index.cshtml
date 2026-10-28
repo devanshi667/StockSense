@@ -1,0 +1,155 @@
+@model ProductListViewModel
+@{
+    ViewData["Title"] = "Products";
+    var sortOptions = new (string Value, string Label)[]
+    {
+        ("name", "Name A-Z"), ("name_desc", "Name Z-A"),
+        ("price", "Price: low to high"), ("price_desc", "Price: high to low"),
+        ("stock", "Stock: low to high"), ("stock_desc", "Stock: high to low"),
+        ("expiry", "Expiry: soonest first"), ("newest", "Newest first")
+    };
+    var filterOptions = new (string Value, string Label)[]
+    {
+        ("all", "All products"), ("low", "Low stock"), ("out", "Out of stock"),
+        ("expiring", "Expiring soon"), ("expired", "Expired")
+    };
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Products</h1>
+        <p class="page-sub">Your catalogue with live stock levels and expiry dates</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add product</a>
+    </div>
+</div>
+
+<div class="card-soft">
+    <form method="get" asp-action="Index" class="filter-bar">
+        <div class="filter-search">
+            <i class="bi bi-search"></i>
+            <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search name, SKU or category" aria-label="Search products" />
+        </div>
+        <select name="categoryId" class="form-select" data-autosubmit aria-label="Filter by category">
+            <option value="">All categories</option>
+            @foreach (var category in Model.Categories)
+            {
+                <option value="@category.Value" selected="@(Model.CategoryId.HasValue && category.Value == Model.CategoryId.Value.ToString())">@category.Text</option>
+            }
+        </select>
+        <select name="filter" class="form-select" data-autosubmit aria-label="Filter by stock status">
+            @foreach (var option in filterOptions)
+            {
+                <option value="@option.Value" selected="@(Model.Filter == option.Value)">@option.Label</option>
+            }
+        </select>
+        <select name="sort" class="form-select" data-autosubmit aria-label="Sort products">
+            @foreach (var option in sortOptions)
+            {
+                <option value="@option.Value" selected="@(Model.Sort == option.Value)">@option.Label</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-outline-primary">Apply</button>
+        @if (Model.HasFilters)
+        {
+            <a asp-action="Index" class="btn btn-link text-muted">Clear</a>
+        }
+    </form>
+
+    @if (Model.Products.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon soft-info"><i class="bi bi-box-seam"></i></div>
+            @if (Model.HasFilters)
+            {
+                <h2 class="h5">No products match your search</h2>
+                <p class="text-muted">Try a different word or clear the filters.</p>
+                <a asp-action="Index" class="btn btn-outline-primary">Clear filters</a>
+            }
+            else
+            {
+                <h2 class="h5">No products yet</h2>
+                <p class="text-muted">Add your first product to start tracking stock and sales. Create a category first if you have none.</p>
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <a asp-controller="Categories" asp-action="Index" class="btn btn-outline-primary">Manage categories</a>
+                    <a asp-action="Create" class="btn btn-primary">Add product</a>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-modern align-middle">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th class="text-end">Stock</th>
+                        <th class="text-end">Cost</th>
+                        <th class="text-end">Price</th>
+                        <th>Expiry</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Products.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@p.Id" class="row-title">@p.Name</a>
+                                @if (p.IsDemo)
+                                {
+                                    <span class="badge-soft soft-muted ms-1" title="Created by the demo data loader">Demo</span>
+                                }
+                                <div class="row-sub">@p.Sku</div>
+                            </td>
+                            <td>@p.CategoryName</td>
+                            <td class="text-end text-nowrap">
+                                <span class="fw-semibold">@Fmt.Qty(p.CurrentStock)</span> <span class="text-muted">@p.Unit</span>
+                                @if (p.IsOutOfStock)
+                                {
+                                    <div><span class="badge-soft soft-danger">Out of stock</span></div>
+                                }
+                                else if (p.IsLowStock)
+                                {
+                                    <div><span class="badge-soft soft-warning">Low (min @Fmt.Qty(p.MinStockLevel))</span></div>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">@Fmt.Money(p.PurchaseCost)</td>
+                            <td class="text-end text-nowrap fw-semibold">@Fmt.Money(p.SellingPrice)</td>
+                            <td class="text-nowrap">
+                                @if (!p.ExpiryDate.HasValue)
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                                else
+                                {
+                                    <div>@Fmt.Date(p.ExpiryDate.Value)</div>
+                                    @if (p.IsExpired)
+                                    {
+                                        <span class="badge-soft soft-danger">Expired</span>
+                                    }
+                                    else if (p.IsExpiringSoon)
+                                    {
+                                        <span class="badge-soft soft-warning">@Fmt.DaysText(p.DaysToExpiry ?? 0)</span>
+                                    }
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-light" title="View details"><i class="bi bi-eye"></i><span class="visually-hidden">View @p.Name</span></a>
+                                <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-light" title="Edit"><i class="bi bi-pencil"></i><span class="visually-hidden">Edit @p.Name</span></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="list-foot">
+            <span class="text-muted small">Showing @Model.Products.FirstItemNumber&ndash;@Model.Products.LastItemNumber of @Model.Products.TotalCount product(s)</span>
+            <partial name="_Pager" model="Model.Products" />
+        </div>
+    }
+</div>

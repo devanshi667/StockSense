@@ -1,0 +1,76 @@
+@model CategoryListViewModel
+@{
+    ViewData["Title"] = "Categories";
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Categories</h1>
+        <p class="page-sub">Group your products, for example Dairy, Grains or Snacks</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <form asp-action="Create" method="post" class="card-soft" data-once novalidate>
+            <h2 class="card-title mb-3">Add a category</h2>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <label asp-for="NewCategory.Name" class="form-label"></label>
+            <input asp-for="NewCategory.Name" class="form-control" maxlength="80" placeholder="e.g. Dairy" />
+            <span asp-validation-for="NewCategory.Name" class="field-error"></span>
+            <button type="submit" class="btn btn-primary mt-3 w-100"><i class="bi bi-plus-lg me-1"></i>Add category</button>
+        </form>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card-soft">
+            @if (Model.Categories.Count == 0)
+            {
+                <div class="empty-state">
+                    <div class="empty-icon soft-info"><i class="bi bi-tags"></i></div>
+                    <h2 class="h5">No categories yet</h2>
+                    <p class="text-muted mb-0">Add your first category using the form. Every product belongs to one category.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-modern align-middle mb-0">
+                        <thead>
+                            <tr><th>Category</th><th class="text-end">Products</th><th class="text-end">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Products" asp-action="Index" asp-route-categoryId="@category.Id" class="row-title">@category.Name</a>
+                                        @if (category.IsDemo)
+                                        {
+                                            <span class="badge-soft soft-muted ms-1" title="Created by the demo data loader">Demo</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">@category.ProductCount</td>
+                                    <td class="text-end text-nowrap">
+                                        <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-light" title="Rename"><i class="bi bi-pencil"></i><span class="visually-hidden">Rename @category.Name</span></a>
+                                        @if (category.ProductCount == 0)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@category.Id" method="post" class="d-inline" data-once
+                                                  data-confirm="Delete the category &quot;@category.Name&quot;?" data-confirm-title="Delete category" data-confirm-button="Yes, delete">
+                                                <button type="submit" class="btn btn-sm btn-light text-danger" title="Delete"><i class="bi bi-trash"></i><span class="visually-hidden">Delete @category.Name</span></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-light" disabled title="A category that still has products cannot be deleted"><i class="bi bi-lock"></i></button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

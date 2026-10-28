@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.log
+
+# Local configuration that contains your database password - NEVER commit these
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.Development.local.json
+.env
+.env.*
+!.env.example
+secrets.json
+
+# Editor / OS files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Publish output / packages
+publish/
+*.nupkg

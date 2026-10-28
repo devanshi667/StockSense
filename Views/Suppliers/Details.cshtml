@@ -1,0 +1,104 @@
+@model SupplierDetailsViewModel
+@{
+    var s = Model.Supplier;
+    ViewData["Title"] = s.Name;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Suppliers</a>
+        <h1 class="page-title mt-1">
+            @s.Name
+            @if (s.IsDemo)
+            {
+                <span class="badge-soft soft-muted align-middle ms-1" title="Created by the demo data loader">Demo</span>
+            }
+        </h1>
+        <p class="page-sub">
+            @if (!string.IsNullOrWhiteSpace(s.Phone))
+            {
+                <span class="chip"><i class="bi bi-telephone"></i> @s.Phone</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(s.Address))
+            {
+                <span class="chip"><i class="bi bi-geo-alt"></i> @s.Address</span>
+            }
+        </p>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="Purchases" asp-action="Index" asp-route-supplierId="@s.Id" class="btn btn-outline-secondary">All purchases</a>
+        <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <a asp-controller="Purchases" asp-action="Create" class="btn btn-primary"><i class="bi bi-truck me-1"></i>Record purchase</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(s.Notes))
+{
+    <div class="alert alert-light border"><i class="bi bi-sticky me-2"></i>@s.Notes</div>
+}
+
+<section class="row g-3 mb-3">
+    <div class="col-6 col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Total purchased</div>
+            <div class="stat-value">@Fmt.Money(Model.TotalPurchased)</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Purchases recorded</div>
+            <div class="stat-value">@Model.Purchases.Count</div>
+            <div class="stat-foot">latest 50 shown below</div>
+        </div>
+    </div>
+</section>
+
+<div class="card-soft mb-3">
+    <div class="card-head"><h2 class="card-title">Purchase history</h2></div>
+    @if (Model.Purchases.Count == 0)
+    {
+        <div class="empty-inline"><i class="bi bi-truck"></i><span>No purchases from this supplier yet.</span></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead><tr><th>Purchase</th><th>Date</th><th class="text-end">Items</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                    @foreach (var purchase in Model.Purchases)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Purchases" asp-action="Details" asp-route-id="@purchase.Id" class="row-title">@purchase.PurchaseNumber</a>
+                                @if (purchase.IsDemo)
+                                {
+                                    <span class="badge-soft soft-muted ms-1">Demo</span>
+                                }
+                            </td>
+                            <td class="text-nowrap">@Fmt.Date(purchase.PurchaseDate)</td>
+                            <td class="text-end">@purchase.ItemCount</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(purchase.TotalAmount)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="card-soft">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="text-muted small">Added @Fmt.Stamp(s.CreatedAt)</div>
+        @if (Model.Purchases.Count == 0)
+        {
+            <form asp-action="Delete" asp-route-id="@s.Id" method="post" data-once
+                  data-confirm="Delete the supplier &quot;@s.Name&quot;?" data-confirm-title="Delete supplier" data-confirm-button="Yes, delete">
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i>Delete supplier</button>
+            </form>
+        }
+        else
+        {
+            <span class="text-muted small"><i class="bi bi-lock me-1"></i>Cannot be deleted: purchases are recorded against this supplier.</span>
+        }
+    </div>
+</div>

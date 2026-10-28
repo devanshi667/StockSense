@@ -1,0 +1,168 @@
+@model SaleCreateViewModel
+@{
+    ViewData["Title"] = "New sale";
+    var lineConfig = new
+    {
+        mode = "sale",
+        products = Model.Products.Select(p => new { id = p.Id, name = p.Name, sku = p.Sku, unit = p.Unit, price = p.Price, cost = p.Cost, stock = p.Stock }).ToList(),
+        lines = Model.Lines.Select(l => new { productId = l.ProductId, quantity = l.Quantity }).ToList()
+    };
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">New sale</h1>
+        <p class="page-sub">Pick products, choose how the customer pays, and save. Stock is reduced when the bill is saved.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Index" class="btn btn-outline-secondary">Sales history</a>
+    </div>
+</div>
+
+@if (!Model.Products.Any())
+{
+    <div class="card-soft">
+        <div class="empty-state">
+            <div class="empty-icon soft-warning"><i class="bi bi-box-seam"></i></div>
+            <h2 class="h5">No products available to sell</h2>
+            <p class="text-muted">Products that are out of stock or expired cannot be sold. Add products or record a purchase to bring stock in.</p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <a asp-controller="Products" asp-action="Create" class="btn btn-outline-primary">Add product</a>
+                <a asp-controller="Purchases" asp-action="Create" class="btn btn-primary">Record purchase</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <form asp-action="Create" method="post" id="lineForm" data-once novalidate>
+        <input type="hidden" asp-for="ClientToken" />
+        <div asp-validation-summary="All" class="alert alert-danger"></div>
+        <div id="clientErrors" class="alert alert-danger d-none" role="alert"></div>
+
+        <div class="row g-3">
+            <div class="col-12 col-xl-8">
+                <div class="card-soft h-100" id="lineApp" data-mode="sale">
+                    <div class="card-head">
+                        <div>
+                            <h2 class="card-title">Items</h2>
+                            <p class="card-sub">Only in-stock, non-expired products are listed. Prices come from the product.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addLine"><i class="bi bi-plus-lg me-1"></i>Add item</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-modern line-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="min-width:240px">Product</th>
+                                    <th style="min-width:110px">Quantity</th>
+                                    <th class="text-end" style="min-width:90px">Price</th>
+                                    <th class="text-end" style="min-width:110px">Line total</th>
+                                    <th style="width:48px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+                <div class="card-soft mb-3">
+                    <h2 class="card-title mb-3">Customer &amp; payment</h2>
+
+                    <label asp-for="CustomerId" class="form-label"></label>
+                    <div class="input-group mb-1">
+                        <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
+                            <option value="">Walk-in customer</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#customerModal" title="Add a new customer"><i class="bi bi-person-plus"></i><span class="visually-hidden">New customer</span></button>
+                    </div>
+                    <span asp-validation-for="CustomerId" class="field-error"></span>
+                    <div class="form-text mb-3" id="customerHint">Needed only if part or all of the bill goes on credit.</div>
+
+                    <div class="pay-mode mb-3" role="radiogroup" aria-label="Payment type">
+                        <label class="pay-option">
+                            <input type="radio" name="OnCredit" value="false" @(Model.OnCredit ? "" : "checked") />
+                            <span><i class="bi bi-cash-coin"></i> Paid in full</span>
+                        </label>
+                        <label class="pay-option">
+                            <input type="radio" name="OnCredit" value="true" @(Model.OnCredit ? "checked" : "") />
+                            <span><i class="bi bi-journal-text"></i> Credit (udhaar)</span>
+                        </label>
+                    </div>
+
+                    <div id="paidNowBox" class="mb-3 d-none">
+                        <label asp-for="AmountPaidNow" class="form-label">Paid now (leave 0 for full credit)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">&#8377;</span>
+                            <input asp-for="AmountPaidNow" type="number" step="0.01" min="0" class="form-control" inputmode="decimal" />
+                        </div>
+                        <span asp-validation-for="AmountPaidNow" class="field-error"></span>
+                    </div>
+
+                    <div id="methodBox" class="mb-3">
+                        <label asp-for="PaymentMethod" class="form-label"></label>
+                        <select asp-for="PaymentMethod" asp-items="Model.PaymentMethods" class="form-select"></select>
+                    </div>
+
+                    <label asp-for="Discount" class="form-label">Discount (&#8377;)</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">&#8377;</span>
+                        <input asp-for="Discount" type="number" step="0.01" min="0" class="form-control" inputmode="decimal" />
+                    </div>
+                    <span asp-validation-for="Discount" class="field-error"></span>
+
+                    <label asp-for="Notes" class="form-label">Notes (optional)</label>
+                    <input asp-for="Notes" class="form-control" maxlength="300" />
+                </div>
+
+                <div class="card-soft sale-summary">
+                    <div class="sum-row"><span>Subtotal</span><strong id="sumSubtotal">&#8377;0.00</strong></div>
+                    <div class="sum-row"><span>Discount</span><strong id="sumDiscount">-&#8377;0.00</strong></div>
+                    <div class="sum-row grand"><span>Total to pay</span><strong id="sumTotal">&#8377;0.00</strong></div>
+                    <div class="sum-row"><span>Paid now</span><strong id="sumPaid">&#8377;0.00</strong></div>
+                    <div class="sum-row due d-none" id="sumDueRow"><span>On credit</span><strong id="sumDue">&#8377;0.00</strong></div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3"><i class="bi bi-check2-circle me-1"></i>Complete sale</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Quick "new customer" dialog (saved with AJAX so the sale form keeps its items) -->
+    <div class="modal fade" id="customerModal" tabindex="-1" aria-labelledby="customerModalTitle" aria-hidden="true" data-url="@Url.Action("QuickCreate", "Customers")">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5" id="customerModalTitle">New customer</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="customerErrors" role="alert"></div>
+                    <div class="mb-3">
+                        <label for="qcName" class="form-label">Name</label>
+                        <input id="qcName" class="form-control" maxlength="100" autocomplete="off" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="qcMobile" class="form-label">Mobile number</label>
+                        <input id="qcMobile" class="form-control" maxlength="10" inputmode="numeric" autocomplete="off" placeholder="10 digits" />
+                    </div>
+                    <div>
+                        <label for="qcAddress" class="form-label">Address (optional)</label>
+                        <input id="qcAddress" class="form-control" maxlength="250" autocomplete="off" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="qcSave">Save customer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="application/json" id="lineConfig">@Json.Serialize(lineConfig)</script>
+}
+
+@section Scripts {
+    <script src="~/js/line-items.js" asp-append-version="true"></script>
+}

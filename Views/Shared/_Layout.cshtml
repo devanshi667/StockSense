@@ -1,0 +1,155 @@
+@{
+    var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty).ToLowerInvariant();
+    var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty).ToLowerInvariant();
+    string Active(bool isActive) => isActive ? "active" : string.Empty;
+    var pageTitle = ViewData["Title"]?.ToString() ?? "StockSense";
+}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>@pageTitle · StockSense</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <a class="sidebar-brand" asp-controller="Home" asp-action="Index">
+            <span class="brand-mark"><i class="bi bi-basket2-fill"></i></span>
+            <span class="brand-text">Stock<b>Sense</b><small>Grocery shop manager</small></span>
+        </a>
+
+        <nav class="sidebar-nav">
+            <div class="nav-caption">Overview</div>
+            <a class="side-link @Active(controller == "home")" asp-controller="Home" asp-action="Index">
+                <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+            </a>
+
+            <div class="nav-caption">Inventory</div>
+            <a class="side-link @Active(controller == "products")" asp-controller="Products" asp-action="Index">
+                <i class="bi bi-box-seam"></i><span>Products</span>
+            </a>
+            <a class="side-link @Active(controller == "categories")" asp-controller="Categories" asp-action="Index">
+                <i class="bi bi-tags"></i><span>Categories</span>
+            </a>
+            <a class="side-link @Active(controller == "stock")" asp-controller="Stock" asp-action="Index">
+                <i class="bi bi-bell"></i><span>Stock alerts</span>
+                @await Component.InvokeAsync("AlertBadge")
+            </a>
+
+            <div class="nav-caption">Trade</div>
+            <a class="side-link @Active(controller == "sales" && action == "create")" asp-controller="Sales" asp-action="Create">
+                <i class="bi bi-cart-plus"></i><span>New sale</span>
+            </a>
+            <a class="side-link @Active(controller == "sales" && action != "create")" asp-controller="Sales" asp-action="Index">
+                <i class="bi bi-receipt"></i><span>Sales history</span>
+            </a>
+            <a class="side-link @Active(controller == "purchases")" asp-controller="Purchases" asp-action="Index">
+                <i class="bi bi-truck"></i><span>Purchases</span>
+            </a>
+            <a class="side-link @Active(controller == "suppliers")" asp-controller="Suppliers" asp-action="Index">
+                <i class="bi bi-shop"></i><span>Suppliers</span>
+            </a>
+
+            <div class="nav-caption">People &amp; insights</div>
+            <a class="side-link @Active(controller == "customers")" asp-controller="Customers" asp-action="Index">
+                <i class="bi bi-people"></i><span>Customers &amp; udhaar</span>
+            </a>
+            <a class="side-link @Active(controller == "reports")" asp-controller="Reports" asp-action="Index">
+                <i class="bi bi-graph-up-arrow"></i><span>Reports</span>
+            </a>
+
+            <div class="nav-caption">System</div>
+            <a class="side-link @Active(controller == "settings")" asp-controller="Settings" asp-action="Index">
+                <i class="bi bi-gear"></i><span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-foot">
+            <i class="bi bi-shield-check"></i>
+            <span>Local demo mode &middot; no login</span>
+        </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="main">
+        <header class="topbar">
+            <button class="icon-btn menu-toggle" type="button" id="menuToggle" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+                <i class="bi bi-list"></i>
+            </button>
+            <a class="topbar-brand" asp-controller="Home" asp-action="Index"><i class="bi bi-basket2-fill"></i> StockSense</a>
+            <div class="topbar-date d-none d-md-flex"><i class="bi bi-calendar3"></i> @DateTime.Now.ToString("dddd, dd MMM yyyy")</div>
+            <div class="topbar-spacer"></div>
+            <a class="btn btn-primary btn-sm topbar-cta" asp-controller="Sales" asp-action="Create">
+                <i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">New sale</span>
+            </a>
+        </header>
+
+        <main class="content" id="main-content">
+            @if (TempData["Success"] is string successMessage)
+            {
+                <div class="alert alert-success alert-dismissible fade show flash" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>@successMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["Warning"] is string warningMessage)
+            {
+                <div class="alert alert-warning alert-dismissible fade show flash" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@warningMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["Error"] is string errorMessage)
+            {
+                <div class="alert alert-danger alert-dismissible fade show flash" role="alert">
+                    <i class="bi bi-x-octagon-fill me-2"></i>@errorMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @RenderBody()
+        </main>
+
+        <footer class="app-footer">
+            StockSense &middot; Smart grocery shop management &middot; Amounts in Indian rupees (&#8377;)
+        </footer>
+    </div>
+
+    <!-- One shared confirmation dialog for every form that has a data-confirm attribute -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h2 class="modal-title h5" id="confirmTitle">Please confirm</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmBody">Are you sure?</div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmOk">Yes, continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <partial name="_ValidationScripts" />
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/charts.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

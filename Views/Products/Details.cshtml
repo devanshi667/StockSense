@@ -1,0 +1,231 @@
+@model ProductDetailsViewModel
+@{
+    var p = Model.Product;
+    ViewData["Title"] = p.Name;
+
+    var today = DateTime.Today;
+    var daysToExpiry = p.ExpiryDate.HasValue ? (int?)(p.ExpiryDate.Value.Date - today).TotalDays : null;
+    var meterTarget = Math.Max(p.MinStockLevel * 2m, 1m);
+    var meterPercent = (int)Math.Min(100m, Math.Max(0m, p.CurrentStock / meterTarget * 100m));
+    var meterClass = p.CurrentStock <= 0 ? "meter-danger" : (p.CurrentStock <= p.MinStockLevel ? "meter-warning" : "meter-ok");
+    var marginPerUnit = p.SellingPrice - p.PurchaseCost;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Products</a>
+        <h1 class="page-title mt-1">
+            @p.Name
+            @if (p.IsDemo)
+            {
+                <span class="badge-soft soft-muted align-middle ms-1" title="Created by the demo data loader">Demo</span>
+            }
+        </h1>
+        <p class="page-sub">
+            <span class="chip"><i class="bi bi-upc-scan"></i> @p.Sku</span>
+            <span class="chip"><i class="bi bi-tag"></i> @(p.Category?.Name ?? "Uncategorised")</span>
+            <span class="chip"><i class="bi bi-rulers"></i> per @p.Unit</span>
+        </p>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="Sales" asp-action="Create" asp-route-productId="@p.Id" class="btn btn-primary"><i class="bi bi-cart-plus me-1"></i>Sell</a>
+        <a asp-controller="Purchases" asp-action="Create" asp-route-productId="@p.Id" class="btn btn-outline-primary"><i class="bi bi-truck me-1"></i>Restock</a>
+        <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+    </div>
+</div>
+
+@foreach (var alert in Model.Alerts)
+{
+    <div class="alert @(alert.Severity == AlertSeverity.Critical ? "alert-danger" : "alert-warning") d-flex gap-3 align-items-start" role="alert">
+        <i class="bi @Ui.KindIcon(alert.Kind) fs-5"></i>
+        <div>
+            <strong>@alert.Title.</strong> @alert.Message
+            <div class="small mt-1"><i class="bi bi-lightbulb me-1"></i><strong>Recommended:</strong> @alert.RecommendedAction</div>
+        </div>
+    </div>
+}
+
+<section class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Current stock</div>
+            <div class="stat-value">@Fmt.Qty(p.CurrentStock) <small>@p.Unit</small></div>
+            <div class="meter @meterClass" role="img" aria-label="Stock level @meterPercent percent of target"><span style="width:@(meterPercent)%"></span></div>
+            <div class="stat-foot">Minimum level: @Fmt.Qty(p.MinStockLevel) @p.Unit</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Selling price</div>
+            <div class="stat-value">@Fmt.Money(p.SellingPrice)</div>
+            <div class="stat-foot">Purchase cost: @Fmt.Money(p.PurchaseCost)</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Margin per unit</div>
+            <div class="stat-value @(marginPerUnit < 0 ? "text-danger" : "")">@Fmt.Money(marginPerUnit)</div>
+            <div class="stat-foot">@Fmt.Pct(Model.MarginPercent) of the selling price</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Expiry date</div>
+            @if (!p.ExpiryDate.HasValue)
+            {
+                <div class="stat-value">No expiry</div>
+                <div class="stat-foot">Not a perishable item</div>
+            }
+            else
+            {
+                <div class="stat-value">@Fmt.Date(p.ExpiryDate.Value)</div>
+                <div class="stat-foot">
+                    @if (daysToExpiry < 0)
+                    {
+                        <span class="badge-soft soft-danger">Expired @Fmt.DaysText(daysToExpiry ?? 0)</span>
+                    }
+                    else if (daysToExpiry <= Model.ExpiryWarningDays)
+                    {
+                        <span class="badge-soft soft-warning">Expires @Fmt.DaysText(daysToExpiry ?? 0)</span>
+                    }
+                    else
+                    {
+                        <span class="badge-soft soft-success">Expires @Fmt.DaysText(daysToExpiry ?? 0)</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-3">
+    <div class="col-12 col-xl-8">
+        <div class="card-soft h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Lifetime performance</h2>
+                    <p class="card-sub">From all saved sales of this product</p>
+                </div>
+            </div>
+            <div class="row g-3 text-center">
+                <div class="col-4">
+                    <div class="mini-stat-value">@Fmt.Qty(Model.TotalSoldQuantity)</div>
+                    <div class="mini-stat-label">@p.Unit sold</div>
+                </div>
+                <div class="col-4">
+                    <div class="mini-stat-value">@Fmt.Money(Model.TotalRevenue)</div>
+                    <div class="mini-stat-label">Revenue</div>
+                </div>
+                <div class="col-4">
+                    <div class="mini-stat-value text-success">@Fmt.Money(Model.TotalGrossProfit)</div>
+                    <div class="mini-stat-label">Gross profit</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <div class="card-soft h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Correct stock</h2>
+                    <p class="card-sub">After a stock-take, damage or loss</p>
+                </div>
+            </div>
+            <form asp-action="AdjustStock" asp-route-id="@p.Id" method="post" data-once
+                  data-confirm="Set the stock of this product to the number you entered? The old quantity will be replaced."
+                  data-confirm-title="Correct stock" data-confirm-button="Yes, correct stock" data-confirm-class="btn-primary">
+                <label for="newStock" class="form-label">Actual quantity on the shelf (@p.Unit)</label>
+                <div class="input-group">
+                    <input id="newStock" name="newStock" type="number" step="any" min="0" class="form-control" value="@Ui.Num(p.CurrentStock)" required />
+                    <button type="submit" class="btn btn-outline-primary">Update</button>
+                </div>
+                <div class="form-text">For new stock from a supplier, use <a asp-controller="Purchases" asp-action="Create" asp-route-productId="@p.Id">Restock</a> instead.</div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-3">
+    <div class="col-12 col-xl-6">
+        <div class="card-soft h-100">
+            <div class="card-head"><h2 class="card-title">Recent sales</h2></div>
+            @if (Model.RecentSales.Count == 0)
+            {
+                <div class="empty-inline"><i class="bi bi-receipt"></i><span>This product has not been sold yet.</span></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-modern table-sm align-middle mb-0">
+                        <thead><tr><th>Invoice</th><th>Date</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Total</th></tr></thead>
+                        <tbody>
+                            @foreach (var item in Model.RecentSales)
+                            {
+                                <tr>
+                                    <td><a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleId">@(item.Sale?.InvoiceNumber ?? ("#" + item.SaleId))</a></td>
+                                    <td class="text-nowrap">@(item.Sale != null ? Fmt.Date(item.Sale.SaleDate) : "")</td>
+                                    <td class="text-end">@Fmt.Qty(item.Quantity)</td>
+                                    <td class="text-end text-nowrap">@Fmt.Money(item.UnitPrice)</td>
+                                    <td class="text-end text-nowrap">@Fmt.Money(item.LineTotal)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card-soft h-100">
+            <div class="card-head"><h2 class="card-title">Recent purchases</h2></div>
+            @if (Model.RecentPurchases.Count == 0)
+            {
+                <div class="empty-inline"><i class="bi bi-truck"></i><span>No purchases recorded for this product.</span></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-modern table-sm align-middle mb-0">
+                        <thead><tr><th>Purchase</th><th>Supplier</th><th class="text-end">Qty</th><th class="text-end">Cost</th></tr></thead>
+                        <tbody>
+                            @foreach (var item in Model.RecentPurchases)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Purchases" asp-action="Details" asp-route-id="@item.PurchaseId">@(item.Purchase?.PurchaseNumber ?? ("#" + item.PurchaseId))</a>
+                                        <div class="row-sub">@(item.Purchase != null ? Fmt.Date(item.Purchase.PurchaseDate) : "")</div>
+                                    </td>
+                                    <td>@(item.Purchase?.Supplier?.Name)</td>
+                                    <td class="text-end">@Fmt.Qty(item.Quantity)</td>
+                                    <td class="text-end text-nowrap">@Fmt.Money(item.UnitCost)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="card-soft">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="text-muted small">
+            Added @Fmt.Stamp(p.CreatedAt) &middot; Last updated @Fmt.Stamp(p.UpdatedAt)
+        </div>
+        @if (Model.CanDelete)
+        {
+            <form asp-action="Delete" asp-route-id="@p.Id" method="post" data-once
+                  data-confirm="Delete &quot;@p.Name&quot; permanently? This cannot be undone."
+                  data-confirm-title="Delete product" data-confirm-button="Yes, delete">
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i>Delete product</button>
+            </form>
+        }
+        else
+        {
+            <span class="text-muted small"><i class="bi bi-lock me-1"></i>Cannot be deleted: it appears in sales or purchases and removing it would break your history.</span>
+        }
+    </div>
+</section>

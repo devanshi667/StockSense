@@ -1,0 +1,85 @@
+@model SupplierListViewModel
+@{
+    ViewData["Title"] = "Suppliers";
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Suppliers</h1>
+        <p class="page-sub">Wholesalers and distributors you buy stock from</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add supplier</a>
+    </div>
+</div>
+
+<div class="card-soft">
+    <form method="get" asp-action="Index" class="filter-bar">
+        <div class="filter-search">
+            <i class="bi bi-search"></i>
+            <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search name or phone" aria-label="Search suppliers" />
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Search</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <a asp-action="Index" class="btn btn-link text-muted">Clear</a>
+        }
+    </form>
+
+    @if (Model.Suppliers.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon soft-info"><i class="bi bi-shop"></i></div>
+            @if (string.IsNullOrWhiteSpace(Model.Search))
+            {
+                <h2 class="h5">No suppliers yet</h2>
+                <p class="text-muted">Add a supplier so you can record purchases and bring stock in.</p>
+                <a asp-action="Create" class="btn btn-primary">Add supplier</a>
+            }
+            else
+            {
+                <h2 class="h5">No suppliers match your search</h2>
+                <a asp-action="Index" class="btn btn-outline-primary">Clear search</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-modern align-middle">
+                <thead>
+                    <tr><th>Supplier</th><th>Phone</th><th class="text-end">Purchases</th><th class="text-end">Total purchased</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Suppliers.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@s.Id" class="row-title">@s.Name</a>
+                                @if (s.IsDemo)
+                                {
+                                    <span class="badge-soft soft-muted ms-1" title="Created by the demo data loader">Demo</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(s.Address))
+                                {
+                                    <div class="row-sub">@s.Address</div>
+                                }
+                            </td>
+                            <td class="text-nowrap">@(string.IsNullOrWhiteSpace(s.Phone) ? "—" : s.Phone)</td>
+                            <td class="text-end">@s.PurchaseCount</td>
+                            <td class="text-end text-nowrap">@Fmt.Money(s.TotalPurchased)</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-light" title="View"><i class="bi bi-eye"></i><span class="visually-hidden">View @s.Name</span></a>
+                                <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-sm btn-light" title="Edit"><i class="bi bi-pencil"></i><span class="visually-hidden">Edit @s.Name</span></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="list-foot">
+            <span class="text-muted small">Showing @Model.Suppliers.FirstItemNumber&ndash;@Model.Suppliers.LastItemNumber of @Model.Suppliers.TotalCount supplier(s)</span>
+            <partial name="_Pager" model="Model.Suppliers" />
+        </div>
+    }
+</div>

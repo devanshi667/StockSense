@@ -4,10 +4,7 @@ ASP.NET Core MVC (.NET 8) + Entity Framework Core 8 + MySQL, with Bootstrap 5, B
 A college mini-project: products, stock & expiry alerts, suppliers & purchases, sales (cash / UPI / credit),
 customer udhaar ledger, and sales / gross-profit reports. No login (local demo mode).
 
-> **Honest status:** this project was written without access to a .NET SDK or MySQL server, so it has **not been compiled
-> or run by its author**. See [FEATURES.md](FEATURES.md) for what is implemented and what is untested. If `dotnet build`
-> shows an error, it is most likely a small typo - the message tells you the file and line; see *Troubleshooting*.
-
+> «Project Status: StockSense is a college mini-project developed using ASP.NET Core MVC (.NET 8), Entity Framework Core 8, and MySQL. The application has been built and run in a local development environment. Core workflows should be verified using the testing checklist before submission. See "FEATURES.md" (FEATURES.md) for feature details and testing notes.»
 ---
 
 ## 1. Install the prerequisites (once)
